@@ -109,7 +109,7 @@ mod weight_array {
         pub fn new(size: usize) -> Self {
             assert!(
                 size <= MAX_NUM_POINTS,
-                "Size ({size}) must be less than or equal to MAX_NUM_POINTS ({MAX_NUM_POINTS}) / 2"
+                "Size ({size}) must be less than or equal to MAX_NUM_POINTS ({MAX_NUM_POINTS})"
             );
             Self {
                 weights: [T::zero(); MAX_NUM_POINTS],
@@ -177,6 +177,7 @@ pub enum Error {
     DataPointOutOfRange,
     OrderTooHigh,
     DerivationOrderTooHigh,
+    NonPositiveTimeStep,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -302,18 +303,26 @@ impl<T: FloatCore> SavitzkyGolayFilter<T> {
         Self { weights, config }
     }
 
-    /// Applies the filter to the input data `v` with a specified time step `dt`. The input data must
-    /// have the same length as the number of weights (2m + 1). The output is the filtered value at the specified data point, which may be a smoothed value or a derivative depending on the configuration.
+    /// Applies the filter to the input data `v` with a specified time step `dt`. The input data
+    /// must have the same length as the number of weights (2m + 1). The output is the filtered
+    /// value at the specified data point, which may be a smoothed value or a derivative depending
+    /// on the configuration.
     ///
     /// # Arguments
     /// * `v` - A slice of input data values, must have length equal to the number of weights (2m + 1)
     /// * `dt` - The time step between data points, used for scaling derivatives. For smoothing (s=0), this can be set to 1.0.
     ///
     /// # Returns
-    /// The filtered value at the specified data point, which may be a smoothed value or a derivative depending on the configuration. Returns an error if the input data length does not match the number of weights.
+    /// The filtered value at the specified data point, which may be a smoothed value or a
+    /// derivative depending on the configuration. Returns an error if the input data length does
+    /// not match the number of weights.
     pub fn filter(&self, v: &[T], dt: T) -> Result<T, Error> {
         if v.len() != self.weights.len() {
             return Err(Error::InputLengthMismatch);
+        }
+
+        if dt <= T::zero() {
+            return Err(Error::NonPositiveTimeStep);
         }
 
         Ok(self
