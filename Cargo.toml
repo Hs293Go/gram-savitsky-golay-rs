@@ -3,7 +3,6 @@ name = "gram-savitzky-golay"
 version = "0.1.0"
 edition = "2024"
 authors = ["H S Helson Go"]
-maintainers = ["H S Helson Go <hellston20a@gmail.com>"]
 license = "MIT"
 
 [dependencies]
