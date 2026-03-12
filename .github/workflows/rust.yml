@@ -1,0 +1,64 @@
+name: Rust CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # Test the no_std variant on a bare-metal target
+          - name: no_std (thumbv7em)
+            target: thumbv7em-none-eabihf
+            features: ""
+            no_run: true
+          # Test the std variant on the host
+          - name: std (host)
+            target: x86_64-unknown-linux-gnu
+            features: "std"
+            no_run: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: clippy
+
+      - name: Cargo Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key:
+            ${{ runner.os }}-cargo-${{ matrix.name }}-${{
+            hashFiles('**/Cargo.lock') }}
+
+      - name: Check (Clippy)
+        run:
+          cargo clippy --target ${{ matrix.target }} --no-default-features
+          --features "${{ matrix.features }}" -- -D warnings
+
+      - name: Build
+        run:
+          cargo build --target ${{ matrix.target }} --no-default-features
+          --features "${{ matrix.features }}"
+
+      - name: Run Tests
+        if: ${{ !matrix.no_run }}
+        run: cargo test --features "${{ matrix.features }}"
